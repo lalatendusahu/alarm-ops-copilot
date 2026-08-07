@@ -1,0 +1,113 @@
+services:
+  alarm-simulator:
+    build:
+      context: .
+      target: alarm-simulator
+    ports:
+      - "8000:8000"
+    environment:
+      ALARM_API_TOKEN: ${ALARM_API_TOKEN:-demo-token}
+      ALARM_DB_PATH: /data/alarm_simulator.db
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - alarm-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 3s
+      start_period: 5s
+      retries: 5
+
+  work-order-service:
+    build:
+      context: .
+      target: work-order-service
+    ports:
+      - "8010:8010"
+    environment:
+      WORK_ORDER_API_TOKEN: ${WORK_ORDER_API_TOKEN:-demo-token}
+      WORK_ORDER_DB_PATH: /data/work_orders.db
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - workorder-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8010/health"]
+      interval: 10s
+      timeout: 3s
+      start_period: 5s
+      retries: 5
+
+  mcp-alarm:
+    build:
+      context: .
+      target: mcp-alarm
+    ports:
+      - "9001:9001"
+    environment:
+      ALARM_API_BASE_URL: http://alarm-simulator:8000
+      ALARM_API_TOKEN: ${ALARM_API_TOKEN:-demo-token}
+      MCP_ALARM_HOST: 0.0.0.0
+      MCP_ALARM_PORT: 9001
+    depends_on:
+      alarm-simulator:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('localhost', 9001), 2)"]
+      interval: 10s
+      timeout: 3s
+      start_period: 5s
+      retries: 5
+
+  mcp-workorders:
+    build:
+      context: .
+      target: mcp-workorders
+    ports:
+      - "9002:9002"
+    environment:
+      WORK_ORDER_API_BASE_URL: http://work-order-service:8010
+      WORK_ORDER_API_TOKEN: ${WORK_ORDER_API_TOKEN:-demo-token}
+      MCP_WORKORDERS_HOST: 0.0.0.0
+      MCP_WORKORDERS_PORT: 9002
+    depends_on:
+      work-order-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('localhost', 9002), 2)"]
+      interval: 10s
+      timeout: 3s
+      start_period: 5s
+      retries: 5
+
+  copilot:
+    build:
+      context: .
+      target: copilot
+    ports:
+      - "8501:8000"
+    environment:
+      MCP_ALARM_URL: http://mcp-alarm:9001/mcp
+      MCP_WORKORDERS_URL: http://mcp-workorders:9002/mcp
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?set OPENAI_API_KEY in .env}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      RAG_DOCUMENTS_PATH: /app/rag/documents
+      RAG_INDEX_PATH: /app/rag/index
+      RAG_EMBEDDING_MODEL: ${RAG_EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+      RAG_TOP_K: ${RAG_TOP_K:-4}
+      RAG_MIN_SCORE: ${RAG_MIN_SCORE:-0.30}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      mcp-alarm:
+        condition: service_healthy
+      mcp-workorders:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 10s
+      timeout: 3s
+      start_period: 20s
+      retries: 5
+
+volumes:
+  alarm-data:
+  workorder-data:

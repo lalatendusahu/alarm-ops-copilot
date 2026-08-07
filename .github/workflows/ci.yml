@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Lint (ruff)
+        run: ruff check alarm-simulator work-order-service connectors mcp-servers apps rag scripts tests
+
+      - name: Alarm simulator tests
+        run: cd alarm-simulator && python -m pytest tests/ --cov=app --cov-report=xml -q
+
+      - name: Work order service tests
+        run: cd work-order-service && python -m pytest tests/ --cov=app --cov-report=xml -q
+
+      - name: Build RAG index
+        run: python rag/ingestion/ingest.py
+
+      - name: MCP, orchestration, RAG, and end-to-end tests
+        run: python -m pytest tests/ rag/tests/ --cov=apps --cov=connectors --cov=rag --cov-report=xml --cov-report=term-missing -q
+
+      - name: Dependency vulnerability check
+        run: pip install pip-audit && pip-audit -r requirements.txt --skip-editable || true
+
+  build-validation:
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build all service images
+        run: docker compose build
+        env:
+          OPENAI_API_KEY: ci-placeholder-not-a-real-key
