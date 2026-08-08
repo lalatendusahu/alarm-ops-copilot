@@ -51,4 +51,4 @@ FROM base AS copilot
 WORKDIR /app
 EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=15s CMD curl -f http://localhost:8000/ || exit 1
-CMD ["sh", "-c", "python rag/ingestion/ingest.py && chainlit run apps/frontend/chainlit_app.py --host 0.0.0.0 --port 8000 --headless"]
+CMD ["sh", "-c", "python rag/ingestion/ingest.py && python apps/frontend/run_server.py"]

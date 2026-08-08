@@ -91,8 +91,13 @@ python mcp-servers/alarm_management/server.py
 python mcp-servers/work_orders/server.py
 
 # then, in a fifth terminal:
-chainlit run apps/frontend/chainlit_app.py --port 8501
+CHAINLIT_PORT=8501 python apps/frontend/run_server.py
 ```
+
+Use `run_server.py`, not the `chainlit run` CLI -- the CLI calls `nest_asyncio.apply()` at
+import time, which patches asyncio process-wide in a way that breaks the MCP client's
+streamable-http sessions (see `docs/known-limitations.md`). `run_server.py` drives the same
+Chainlit ASGI app directly through uvicorn, without going through the CLI.
 
 ## Configuration
 
@@ -128,18 +133,18 @@ MCP servers together for the mandatory Boiler Feed Pump 101 scenario.
 > identify likely contributing factors, retrieve the relevant operating procedure, and provide
 > recommended actions with source evidence.
 
-Chains: `alarm.search_assets` -> `alarm.get_alarm_summary` -> `alarm.get_rationalization_candidates`
--> `workorders.get_maintenance_history` -> `rag.search_documents`, then a grounded answer citing
+Chains: `alarm__search_assets` -> `alarm__get_alarm_summary` -> `alarm__get_rationalization_candidates`
+-> `workorders__get_maintenance_history` -> `rag__search_documents`, then a grounded answer citing
 the operating procedure and troubleshooting guide.
 
 > Calculate operator response efficiency for SouthPlant and check the applicable operating
 > guideline.
 
-Chains: `alarm.generate_kpi_calculation` -> `alarm.execute_kpi_calculation` -> `rag.search_documents`.
+Chains: `alarm__generate_kpi_calculation` -> `alarm__execute_kpi_calculation` -> `rag__search_documents`.
 
 > Draft a work order for AST-1001 to inspect the bearing.
 
-Calls `workorders.create_work_order_draft` with `confirm=false`, returns a preview, and the GUI
+Calls `workorders__create_work_order_draft` with `confirm=false`, returns a preview, and the GUI
 shows Approve/Discard buttons -- nothing is persisted until a human clicks Approve.
 
 ## Architecture

@@ -43,6 +43,21 @@ relevant since the LLM provider is meant to be swappable.
 meant to run in a single container each. SQLite means zero external setup and the seed scripts
 are trivially reproducible; a real deployment would use Postgres per service.
 
+**`run_server.py` instead of the `chainlit run` CLI to launch the copilot.** The CLI
+(`chainlit.cli`) calls `nest_asyncio.apply()` at import time, which monkey-patches asyncio's
+Task/event-loop classes process-wide to allow reentrant event loops. That patch corrupts anyio's
+cancel-scope bookkeeping for any anyio-based client used later in the same process -- including
+the MCP SDK's streamable-http client -- producing a `RuntimeError: Attempted to exit a cancel
+scope that isn't the current task's current cancel scope` on every MCP session, even though the
+underlying connection succeeds. This was diagnosed by confirming the same MCP client code works
+standalone and under pytest, and only breaks inside a live Chainlit session; isolating the work in
+a separate thread/event loop did not help, which pointed at process-wide state rather than a
+task-identity mismatch, and tracing that state to the single `nest_asyncio.apply()` call
+(present only in `chainlit.cli`, nowhere else in the dependency tree) confirmed it.
+`apps/frontend/run_server.py` drives the same Chainlit ASGI app (`chainlit.server:app`) directly
+through uvicorn -- loading the target module and wiring config the same way the CLI does -- without
+ever importing `chainlit.cli`, so the patch is never applied.
+
 **Confirmation gating implemented as a real GUI control, not just a prompt instruction.** The
 planner's system prompt already tells the model not to pass `confirm=true` without explicit user
 approval, but prompt instructions are not a security boundary. The Chainlit GUI enforces it

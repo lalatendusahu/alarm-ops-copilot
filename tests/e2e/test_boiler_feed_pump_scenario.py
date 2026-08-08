@@ -61,15 +61,15 @@ async def test_boiler_feed_pump_investigation_end_to_end(live_stack):
         "workorders": live_stack["workorder_mcp_url"],
     })
     discovered = await registry.discover()
-    assert {t.namespaced_name for t in discovered} >= {"alarm.search_assets", "workorders.get_maintenance_history"}
+    assert {t.namespaced_name for t in discovered} >= {"alarm__search_assets", "workorders__get_maintenance_history"}
 
     time_range = {"start_time": "2026-05-01T00:00:00Z", "end_time": "2026-08-01T00:00:00Z"}
     planner = ScriptedPlanner([
-        ("alarm.search_assets", {"query": "Boiler Feed Pump 101"}),
-        ("alarm.get_alarm_summary", {**time_range, "asset_ids": ["AST-1001"], "severity": ["high", "critical"], "group_by": ["alarm_name"]}),
-        ("alarm.get_rationalization_candidates", {**time_range, "asset_ids": ["AST-1001"], "recurrence_threshold": 5}),
-        ("workorders.get_maintenance_history", {"asset_id": "AST-1001"}),
-        ("rag.search_documents", {"query": "recurring high bearing vibration boiler feed pump response procedure"}),
+        ("alarm__search_assets", {"query": "Boiler Feed Pump 101"}),
+        ("alarm__get_alarm_summary", {**time_range, "asset_ids": ["AST-1001"], "severity": ["high", "critical"], "group_by": ["alarm_name"]}),
+        ("alarm__get_rationalization_candidates", {**time_range, "asset_ids": ["AST-1001"], "recurrence_threshold": 5}),
+        ("workorders__get_maintenance_history", {"asset_id": "AST-1001"}),
+        ("rag__search_documents", {"query": "recurring high bearing vibration boiler feed pump response procedure"}),
     ])
 
     result = await run_turn(

@@ -132,7 +132,7 @@ async def approve_work_order(action: cl.Action):
         await cl.Message(content="No pending draft to confirm -- it may have already been actioned.").send()
         return
 
-    result, is_error = await registry.call("workorders.create_work_order_draft", {**draft, "confirm": True})
+    result, is_error = await registry.call("workorders__create_work_order_draft", {**draft, "confirm": True})
     cl.user_session.set("pending_draft", None)
 
     if is_error:

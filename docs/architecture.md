@@ -18,8 +18,8 @@ collected this turn. `trace.py` records every tool call (server, tool, input, ou
 duration, trace id) regardless of outcome.
 
 **MCP client (`apps/backend/orchestrator/mcp_client.py`)** -- `MCPToolRegistry` discovers tools
-from every configured MCP server over streamable-http, namespaces them (`alarm.search_assets`,
-`workorders.get_maintenance_history`), converts their schemas to OpenAI's function-calling
+from every configured MCP server over streamable-http, namespaces them (`alarm__search_assets`,
+`workorders__get_maintenance_history`), converts their schemas to OpenAI's function-calling
 format, and dispatches calls back to the right server. A fresh session is opened per call rather
 than held open for the process lifetime -- simpler, and it means a server that's down for one
 call doesn't poison the next one.
@@ -43,7 +43,7 @@ spinning up the API.
 
 **RAG (`rag/`)** -- ingestion (`rag/ingestion/`) chunks the markdown corpus, embeds it with a
 local sentence-transformer, and writes a FAISS index. Retrieval (`rag/retrieval/`) is a thin
-wrapper the orchestrator calls directly as a pseudo-tool (`rag.search_documents`) -- it is
+wrapper the orchestrator calls directly as a pseudo-tool (`rag__search_documents`) -- it is
 **not** behind an MCP server. That's a deliberate choice: RAG isn't a source-system integration,
 it's a capability of the copilot itself, so it doesn't need protocol indirection. The diagram
 shows this as a separate path alongside the MCP path, not behind it.

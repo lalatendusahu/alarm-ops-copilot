@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 
 from apps.backend.config import settings
 from apps.backend.orchestrator.llm import FINAL_ANSWER_INSTRUCTION, PLANNER_SYSTEM_PROMPT, LLMClient
-from apps.backend.orchestrator.mcp_client import MCPToolRegistry
+from apps.backend.orchestrator.mcp_client import NAMESPACE_SEP, MCPToolRegistry
 from apps.backend.orchestrator.rag_tool import RAG_TOOL_NAME, RAG_TOOL_SPEC, search_documents
 from apps.backend.orchestrator.trace import TraceCollector
 
@@ -83,8 +83,8 @@ async def run_turn(
             except json.JSONDecodeError:
                 args = {}
 
-            server = name.split(".", 1)[0] if "." in name else name
-            short_name = name.split(".", 1)[1] if "." in name else name
+            server = name.split(NAMESPACE_SEP, 1)[0] if NAMESPACE_SEP in name else name
+            short_name = name.split(NAMESPACE_SEP, 1)[1] if NAMESPACE_SEP in name else name
             timer = trace.timer().begin(server, short_name, args)
 
             result, is_error = await execute_tool(name, args, registry)

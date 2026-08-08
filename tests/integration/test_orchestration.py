@@ -69,20 +69,20 @@ class FakeRegistry:
 @pytest.mark.asyncio
 async def test_multi_step_chain_across_two_mcp_servers():
     llm = FakeLLMClient([
-        ("tool", [("alarm.search_assets", {"query": "Boiler Feed Pump 101"})]),
-        ("tool", [("workorders.get_maintenance_history", {"asset_id": "AST-1001"})]),
+        ("tool", [("alarm__search_assets", {"query": "Boiler Feed Pump 101"})]),
+        ("tool", [("workorders__get_maintenance_history", {"asset_id": "AST-1001"})]),
         ("stop", None),
     ])
     registry = FakeRegistry({
-        "alarm.search_assets": ({"trace_id": "t1", "data": {"results": [{"asset_id": "AST-1001"}]}}, False),
-        "workorders.get_maintenance_history": ({"trace_id": "t2", "data": {"history": []}}, False),
+        "alarm__search_assets": ({"trace_id": "t1", "data": {"results": [{"asset_id": "AST-1001"}]}}, False),
+        "workorders__get_maintenance_history": ({"trace_id": "t2", "data": {"history": []}}, False),
     })
 
     result = await run_turn("investigate Boiler Feed Pump 101", [], registry, llm)
 
     servers_called = {step["server"] for step in result.trace.as_dicts()}
     assert servers_called == {"alarm", "workorders"}
-    assert registry.calls[0] == ("alarm.search_assets", {"query": "Boiler Feed Pump 101"})
+    assert registry.calls[0] == ("alarm__search_assets", {"query": "Boiler Feed Pump 101"})
     assert llm.final_answer_calls == 1  # loop used tools, so grounded synthesis pass runs
 
 
@@ -94,7 +94,7 @@ async def test_rag_results_are_collected_as_citations(monkeypatch):
     monkeypatch.setattr(engine_module, "search_documents", lambda query, top_k=None: (canned, False))
 
     llm = FakeLLMClient([
-        ("tool", [("rag.search_documents", {"query": "bearing vibration"})]),
+        ("tool", [("rag__search_documents", {"query": "bearing vibration"})]),
         ("stop", None),
     ])
     registry = FakeRegistry({})
@@ -111,7 +111,7 @@ async def test_duplicate_rag_citations_are_deduplicated(monkeypatch):
     monkeypatch.setattr(engine_module, "search_documents", lambda query, top_k=None: (canned, False))
 
     llm = FakeLLMClient([
-        ("tool", [("rag.search_documents", {"query": "one"}), ("rag.search_documents", {"query": "two"})]),
+        ("tool", [("rag__search_documents", {"query": "one"}), ("rag__search_documents", {"query": "two"})]),
         ("stop", None),
     ])
     result = await run_turn("question", [], FakeRegistry({}), llm)
@@ -122,10 +122,10 @@ async def test_duplicate_rag_citations_are_deduplicated(monkeypatch):
 @pytest.mark.asyncio
 async def test_tool_error_does_not_crash_the_turn_and_is_recorded():
     llm = FakeLLMClient([
-        ("tool", [("alarm.get_alarm_by_id", {"alarm_id": "missing"})]),
+        ("tool", [("alarm__get_alarm_by_id", {"alarm_id": "missing"})]),
         ("stop", None),
     ])
-    registry = FakeRegistry({"alarm.get_alarm_by_id": ({"error": "not found"}, True)})
+    registry = FakeRegistry({"alarm__get_alarm_by_id": ({"error": "not found"}, True)})
 
     result = await run_turn("look up alarm missing", [], registry, llm)
 
@@ -137,10 +137,10 @@ async def test_tool_error_does_not_crash_the_turn_and_is_recorded():
 @pytest.mark.asyncio
 async def test_unavailable_mcp_server_is_reported_as_a_failed_step_not_an_exception():
     llm = FakeLLMClient([
-        ("tool", [("workorders.search_work_orders", {})]),
+        ("tool", [("workorders__search_work_orders", {})]),
         ("stop", None),
     ])
-    registry = FakeRegistry({"workorders.search_work_orders": ({"error": "MCP server 'workorders' is unavailable: connection refused"}, True)})
+    registry = FakeRegistry({"workorders__search_work_orders": ({"error": "MCP server 'workorders' is unavailable: connection refused"}, True)})
 
     result = await run_turn("find work orders", [], registry, llm)
 
@@ -150,7 +150,7 @@ async def test_unavailable_mcp_server_is_reported_as_a_failed_step_not_an_except
 
 @pytest.mark.asyncio
 async def test_malformed_tool_arguments_default_to_empty_dict():
-    registry = FakeRegistry({"alarm.list_kpi_definitions": ({"trace_id": "t", "data": {}}, False)})
+    registry = FakeRegistry({"alarm__list_kpi_definitions": ({"trace_id": "t", "data": {}}, False)})
     llm = FakeLLMClient([("stop", "done")])  # unused; plan_step is overridden below
 
     call_count = {"n": 0}
@@ -158,7 +158,7 @@ async def test_malformed_tool_arguments_default_to_empty_dict():
     async def scripted_plan_step(messages, tools):
         call_count["n"] += 1
         if call_count["n"] == 1:
-            bad_call = FakeToolCall(id="c1", function=FakeFunctionCall(name="alarm.list_kpi_definitions", arguments="{not valid json"))
+            bad_call = FakeToolCall(id="c1", function=FakeFunctionCall(name="alarm__list_kpi_definitions", arguments="{not valid json"))
             return FakeAssistantMessage(content=None, tool_calls=[bad_call])
         return FakeAssistantMessage(content="done", tool_calls=[])
 
@@ -166,7 +166,7 @@ async def test_malformed_tool_arguments_default_to_empty_dict():
 
     result = await run_turn("run a kpi", [], registry, llm)
 
-    assert registry.calls == [("alarm.list_kpi_definitions", {})]
+    assert registry.calls == [("alarm__list_kpi_definitions", {})]
     assert result.answer
 
 
@@ -183,8 +183,8 @@ async def test_direct_answer_skips_grounded_synthesis_pass():
 @pytest.mark.asyncio
 async def test_max_iterations_cap_still_produces_a_grounded_answer(monkeypatch):
     monkeypatch.setattr(engine_module.settings, "max_tool_iterations", 3)
-    registry = FakeRegistry({"alarm.get_alarms": ({"trace_id": "t", "data": {"data": []}}, False)})
-    llm = FakeLLMClient([("tool", [("alarm.get_alarms", {})]) for _ in range(10)])
+    registry = FakeRegistry({"alarm__get_alarms": ({"trace_id": "t", "data": {"data": []}}, False)})
+    llm = FakeLLMClient([("tool", [("alarm__get_alarms", {})]) for _ in range(10)])
 
     await run_turn("keep looking", [], registry, llm)
 

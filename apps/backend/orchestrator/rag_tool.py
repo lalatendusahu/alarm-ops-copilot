@@ -1,7 +1,7 @@
 from apps.backend.config import settings
 from rag.retrieval.retriever import IndexNotBuiltError, get_retriever
 
-RAG_TOOL_NAME = "rag.search_documents"
+RAG_TOOL_NAME = "rag__search_documents"
 
 RAG_TOOL_SPEC = {
     "type": "function",

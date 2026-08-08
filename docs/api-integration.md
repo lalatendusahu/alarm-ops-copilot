@@ -65,6 +65,6 @@ Reseed with `python scripts/seed_work_order_db.py --reset`.
 The Postman `chaining/` collection documents 10 multi-step flows against the raw HTTP API (asset
 search -> summary -> rationalization; flood -> alarms -> summary; KPI generate -> execute ->
 summary; etc). The MCP layer preserves the same chaining shape one level up: the LLM calls
-`alarm.search_assets`, gets an `asset_id` back, and passes it into `alarm.get_alarm_summary`,
+`alarm__search_assets`, gets an `asset_id` back, and passes it into `alarm__get_alarm_summary`,
 exactly like the Postman flow does at the HTTP level -- see
 `tests/e2e/test_boiler_feed_pump_scenario.py` for an automated version of this across MCP.
