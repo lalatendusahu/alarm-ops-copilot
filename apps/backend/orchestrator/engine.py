@@ -38,9 +38,46 @@ def _dedupe_citations(citations: list[dict]) -> list[dict]:
     return deduped
 
 
+RAG_REDACTED_NOTICE = "[document search result withheld from planning context -- available only to the final answer]"
+
+
+def _rag_call_ids(messages: list[dict]) -> set[str]:
+    ids = set()
+    for m in messages:
+        if m.get("role") == "assistant":
+            for tc in m.get("tool_calls") or []:
+                if tc["function"]["name"] == RAG_TOOL_NAME:
+                    ids.add(tc["id"])
+    return ids
+
+
+def _redact_rag_results(messages: list[dict]) -> list[dict]:
+    """Retrieved document text must never reach the tool-selection step -- only the final
+    grounded-answer call sees it -- so injected instructions in a document can't steer
+    which tool the model calls next. Text is dropped by tool_call_id rather than content
+    sniffing, since content is untrusted and any string match on it could itself be spoofed.
+    """
+    rag_ids = _rag_call_ids(messages)
+    if not rag_ids:
+        return messages
+    return [
+        {**m, "content": RAG_REDACTED_NOTICE} if m.get("role") == "tool" and m.get("tool_call_id") in rag_ids else m
+        for m in messages
+    ]
+
+
+WRITE_TOOLS_FORCED_TO_PREVIEW = {"workorders__create_work_order_draft"}
+
+
 async def execute_tool(name: str, args: dict, registry: MCPToolRegistry) -> tuple[dict, bool]:
     if name == RAG_TOOL_NAME:
         return search_documents(query=args.get("query", ""), top_k=args.get("top_k"))
+    if name in WRITE_TOOLS_FORCED_TO_PREVIEW:
+        # confirm=True must only ever come from the human clicking Approve in the GUI
+        # (apps/frontend/chainlit_app.py:approve_work_order, which calls registry.call
+        # directly and never goes through this function). A model deciding on its own --
+        # even at a user's explicit request in the prompt -- cannot persist a write.
+        args = {**args, "confirm": False}
     return await registry.call(name, args)
 
 
@@ -65,7 +102,7 @@ async def run_turn(
     final_text = None
 
     for _ in range(settings.max_tool_iterations):
-        assistant_msg = await llm.plan_step(messages, tool_specs)
+        assistant_msg = await llm.plan_step(_redact_rag_results(messages), tool_specs)
 
         if not assistant_msg.tool_calls:
             messages.append({"role": "assistant", "content": assistant_msg.content or ""})

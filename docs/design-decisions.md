@@ -58,9 +58,16 @@ task-identity mismatch, and tracing that state to the single `nest_asyncio.apply
 through uvicorn -- loading the target module and wiring config the same way the CLI does -- without
 ever importing `chainlit.cli`, so the patch is never applied.
 
-**Confirmation gating implemented as a real GUI control, not just a prompt instruction.** The
-planner's system prompt already tells the model not to pass `confirm=true` without explicit user
-approval, but prompt instructions are not a security boundary. The Chainlit GUI enforces it
-independently: a draft-only tool call surfaces an Approve/Discard action, and only a human click
-on Approve triggers the `confirm=true` call. The work-order service also rejects `confirm=false`
-at the API level as defense in depth.
+**Confirmation gating implemented as a real code boundary, not just a prompt instruction.** The
+planner's system prompt tells the model not to pass `confirm=true` without explicit user approval,
+but a user can simply ask the model to ignore that instruction ("no need to ask me") -- prompt text
+is not a security boundary, and testing this directly (asking the model to create and confirm a
+work order in one message) confirmed the model will in fact try to set `confirm=true` on its own
+tool call when asked to. The actual enforcement is in `apps/backend/orchestrator/engine.py`:
+`execute_tool` force-overwrites `confirm` to `false` for `workorders__create_work_order_draft`
+whenever the call is dispatched from the model's own planning loop, regardless of what the model
+passed. The only code path that can send `confirm=true` is the Chainlit GUI's `approve_work_order`
+action callback, which calls `registry.call(...)` directly -- bypassing `execute_tool` and the
+planning loop entirely -- and only runs in response to a human clicking Approve. The work-order
+service also rejects `confirm=false` at the API level as a third layer of defense in depth.
+Regression test: `tests/integration/test_orchestration.py::test_model_cannot_confirm_a_work_order_through_the_planning_loop`.
