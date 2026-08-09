@@ -196,6 +196,9 @@ coverage summaries for both source-system services.
 
 ## Demo
 
-See the demo video link and screenshots the submission message points to (recorded separately --
-see `docs/known-limitations.md` for what was and wasn't exercised against a live LLM in this
-environment).
+Try below queries in the chat 
+
+1. Investigate recurring high-severity alarms for Boiler Feed Pump 101 over the last 90 days, identify likely contributing factors, retrieve the relevant operating procedure, and provide recommended actions with source evidence.
+2. Draft a work order for AST-1001 to inspect the bearing.(Human in the loop approach)
+3. Calculate operator response efficiency for SouthPlant and check the applicable operating guideline.
+4. Are alarms on AST-3001 and AST-3002 correlated, and does our rationalization guidance say anything about handling correlated alarms?
