@@ -5,6 +5,9 @@ candidate-built MCP servers (Alarm Management, Work Orders) and grounds its answ
 document corpus through RAG -- all in one workflow, with full tool/citation traceability in the
 GUI.
 
+Please find the demo link here - https://www.loom.com/share/e398d170ab7d4e4e9e31ec86f29ce4ef
+
+
 ## Selected Use Case
 
 **Multi-MCP Enterprise Operations Copilot** (Assignment_Use_Case.md, section 4). The mandatory
