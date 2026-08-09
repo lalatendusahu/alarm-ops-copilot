@@ -62,7 +62,12 @@ system:
 
 1. Retrieved chunks only ever enter the **final grounded-answer** LLM call, never the
    tool-selection/planning step -- so even a successful injection couldn't make the model call an
-   unintended tool (e.g. a write operation).
+   unintended tool (e.g. a write operation). This is enforced in code, not just by convention:
+   `apps/backend/orchestrator/engine.py::_redact_rag_results` replaces the content of any RAG tool
+   result with a placeholder before that message list is passed to `llm.plan_step`, keyed off
+   `tool_call_id` rather than string-matching the content (which would itself be spoofable). The
+   real text is only ever handed to `llm.final_answer`. Covered by
+   `tests/integration/test_orchestration.py::test_rag_result_text_is_kept_out_of_later_planning_but_reaches_final_answer`.
 2. The retriever (`rag/retrieval/retriever.py`) does not execute, evaluate, or template anything
    in chunk text -- it is returned as an opaque string.
 3. The final-answer system prompt explicitly frames retrieved text as untrusted reference data to

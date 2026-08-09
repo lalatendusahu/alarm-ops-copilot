@@ -159,10 +159,14 @@ the alarm simulator (`ALARM_API_BASE_URL`).
   `priority` (default `medium`), `confirm` (default `false`), `trace_id`.
 - **Behavior**: with `confirm=false` (the default), calls `POST /work-orders/draft` -- a
   **preview only**, nothing is written. With `confirm=true`, calls `POST /work-orders`, which
-  persists the record and returns a real `work_order_id`. The planner's system prompt instructs
-  the model to only pass `confirm=true` once a human has approved it in the conversation; the
-  Chainlit GUI enforces this with an explicit Approve/Discard action button rather than trusting
-  the model's word for it.
+  persists the record and returns a real `work_order_id`. The MCP tool itself will honor
+  `confirm=true` from any caller -- it has no way to know whether a human approved it. The actual
+  enforcement lives one layer up, in the orchestrator: `apps/backend/orchestrator/engine.py`'s
+  `execute_tool` force-overwrites `confirm` back to `false` whenever this tool is dispatched from
+  the model's own planning loop, so the model cannot persist a write no matter what it's asked to
+  do. The Chainlit GUI's Approve action calls the MCP tool directly (bypassing that loop) with
+  `confirm=true` only after a human clicks it -- that is the only code path that can ever send
+  `confirm=true`.
 - **Error behavior**: calling the create endpoint with `confirm=false` server-side is rejected
   with 400 -> `invalid request` (defense in depth, in case a client bypasses the MCP tool's own
   default).
