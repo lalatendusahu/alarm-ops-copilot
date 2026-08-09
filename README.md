@@ -182,7 +182,7 @@ apps/frontend/        Chainlit GUI
 tests/                integration/ (MCP servers + orchestration), e2e/ -- unit tests per source
                       system are colocated instead (alarm-simulator/tests, work-order-service/tests)
 docs/                 architecture, MCP tool catalog, RAG design, API integration, decisions, limitations
-scripts/              seed_alarm_db.py, seed_work_order_db.py, ingest.py wrapper, generate_diagram.py
+scripts/              seed_alarm_db.py, seed_work_order_db.py, ingest.py wrapper
 postman/              Reference API spec the simulator was built against
 ```
 
